@@ -19,15 +19,19 @@ bundle, upload it, publish it.
    TRICORE_SERVER_BIN=/path/to/tricore-server ./gradlew integrationTest
    ```
 
-3. Build the signed bundle. The key and its passphrase are passed in, never stored in
-   the repository:
+3. Build the signed bundle, in **Git Bash** — `gpg` is on its PATH, not on
+   PowerShell's:
 
    ```bash
-   ./gradlew centralBundle \
-     -Ptricoredb.sign=true \
-     -PsigningInMemoryKey="$(gpg --armor --export-secret-keys KEYID)" \
-     -PsigningInMemoryKeyPassword='the passphrase'
+   read -rs GPG_PASS
+   ./gradlew centralBundle -Ptricoredb.sign=true -Psigning.gnupg.keyName=1406F11759AE6388 -Psigning.gnupg.passphrase="$GPG_PASS"
+   unset GPG_PASS
    ```
+
+   Signing runs through the `gpg` binary, the same way the Java SDK's release does.
+   Gradle can also sign with an armored key passed as `-PsigningInMemoryKey`, but
+   Bouncy Castle cannot read the secret-key format GnuPG 2.4 writes and fails with
+   "Could not read PGP secret key" — so prefer the command above.
 
    The zip lands in `build/distributions/tricoredb-kotlin-<version>-central-bundle.zip`
    and holds the jar, sources jar, javadoc jar, POM, their `.asc` signatures and the

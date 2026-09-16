@@ -163,18 +163,28 @@ publishing {
     }
 }
 
-// Signing is opt-in: pass -Ptricoredb.sign=true (with signing.* or in-memory key
-// properties configured) to sign. A plain build and publishToMavenLocal never sign.
+// Signing is opt-in: pass -Ptricoredb.sign=true to sign. A plain build and
+// publishToMavenLocal never sign.
 val signingEnabled = providers.gradleProperty("tricoredb.sign").map { it.toBoolean() }.getOrElse(false)
 
 signing {
     isRequired = signingEnabled
     val key = providers.gradleProperty("signingInMemoryKey").orNull
     val password = providers.gradleProperty("signingInMemoryKeyPassword").orNull
-    if (signingEnabled && key != null) {
-        useInMemoryPgpKeys(key, password)
-    }
     if (signingEnabled) {
+        if (key != null) {
+            // An armored key passed in directly, parsed by Bouncy Castle.
+            useInMemoryPgpKeys(key, password)
+        } else {
+            // The `gpg` binary signs instead. This is the default because Bouncy
+            // Castle cannot read the secret-key format GnuPG 2.4 writes, so an
+            // exported key fails with "Could not read PGP secret key" — while gpg
+            // itself has no trouble with its own keys. Name the key and pass its
+            // passphrase with:
+            //
+            //   -Psigning.gnupg.keyName=KEYID -Psigning.gnupg.passphrase=...
+            useGpgCmd()
+        }
         sign(publishing.publications["maven"])
     }
 }
